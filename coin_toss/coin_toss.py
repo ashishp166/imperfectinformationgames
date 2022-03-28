@@ -48,8 +48,12 @@ class coin_toss:
             return Node(coin_toss.Player1Actions, infoSet)
     def getInfoSet(self, gameState):
         player = self.getCurrentPlayer(gameState)
-        outcome = "?" if player == 1 else str(coin_toss.CardTranslations[gameState.outcome])
-        return "Player" + str(player) + " probability for " + outcome + "-" + gameState.history
+        if player == 1:
+            return "Player 1 probability if Player 0 selects plays"
+        if(str(coin_toss.CardTranslations[gameState.outcome]) == "h"):
+            return "Player 0 probability for heads"
+        else:
+            return "Player 0 probability for tails"
     def getCurrentPlayer(self, gameState):
         plays = len(gameState.history)
         player = plays % 2
