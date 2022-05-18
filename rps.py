@@ -40,45 +40,58 @@ def getAction(strategy):
     strategy = strategy / np.sum(strategy) #normalize
     return np.searchsorted(np.cumsum(strategy), random.random())
 
-def train(iterations):
-    regretSum = np.zeros(NUM_ACTIONS)
-    strategySum = np.zeros((NUM_ACTIONS))
+def innertrain(regretSum, strategySum, oppStrategy):
+    #accmulate the current strategy based on regret
+    strategy = getStrategy(regretSum)
+    strategySum += strategy
+
+    #select my action and opponent action
+    myAction = getAction(strategy)
+    otherAction = getAction(oppStrategy)
 
     actionUtility = np.zeros(NUM_ACTIONS)
+    # this is snaking around the values so that it sums up the new regret value to proper item
+    actionUtility[otherAction] = 0
+    actionUtility[(otherAction + 1) % NUM_ACTIONS] = 1
+    actionUtility[(otherAction - 1) % NUM_ACTIONS] = -1
+
+    regretSum += actionUtility - actionUtility[myAction]
+    return regretSum, strategySum
+
+def train(iterations):
+    regretSum = np.zeros(NUM_ACTIONS)
+    strategySum = np.zeros(NUM_ACTIONS)
+    oppStrategy = np.array([0.4, 0.3, 0.3])
+
     for i in range(iterations):
-        strategy = getStrategy(regretSum)
-        #use the regret to form the current player strategy
-        strategySum += strategy
+        regretSum, strategySum = innertrain(regretSum, strategySum, oppStrategy)
+    return strategySum
 
-        myAction = getAction(strategy)
-        otherAction = getAction(oppStrategy)
+def train2p(oiterations, iterations):
+    strategySumP1 = np.zeros(NUM_ACTIONS)
+    strategySumP2 = np.zeros(NUM_ACTIONS)
 
-        #this is snaking around the values so that it sums up the new regret value to proper item
-        actionUtility[otherAction] = 0
-        actionUtility[(otherAction + 1) % NUM_ACTIONS] = 1
-        actionUtility[(otherAction - 1) % NUM_ACTIONS] = -1
+    for j in range(oiterations):
+        oppStrategy = normalize(strategySumP2)
+        regretSumP1 = np.zeros(NUM_ACTIONS)
+        for i in range(iterations):
+            regretSumP1, strategySumP1 = innertrain(regretSumP1, strategySumP1, oppStrategy)
 
-        regretSum += actionUtility - actionUtility[myAction]
-        return strategySum
+        oppStrategy = normalize(strategySumP1)
+        regretSumP2 = np.zeros(NUM_ACTIONS)
+        for i in range(iterations):
+            regretSumP2, strategySumP2 = innertrain(regretSumP2, strategySumP2, oppStrategy)
+        print(normalize(strategySumP1), normalize(strategySumP2))
+    return strategySumP1, strategySumP2
 
-strategySum = train(100000)
+s1, s2 = train2p(20, 1000)
+print(normalize(s1))
+print(normalize(s2))
 
-strategy = getAveragedStrategy(strategySum)
-print(strategy)
+comp = train(10000)
+print(getAveragedStrategy(comp))
 
-vvv = []
-for j in range(200):
-    vv = 0
-    for i in range(100):
-        #strategy = getStrategy()
-        #strategy = [0, 1, 0]
 
-        myAction = getAction(strategy)
-        otherAction = getAction(oppStrategy)
-        vv += value(myAction, otherAction)
-    vvv.append(vv)
-plt.plot(sorted(vvv))
-print(np.mean(vvv))
-print(np.median(vvv))
-plt.show()
+
+
 
