@@ -85,13 +85,30 @@ def train2p(oiterations, iterations):
     return strategySumP1, strategySumP2
 
 s1, s2 = train2p(20, 1000)
-print(normalize(s1))
-print(normalize(s2))
+playerstrategey = normalize(s1)
+oppStrategy = normalize(s2)
+print(playerstrategey)
+print(oppStrategy)
 
 comp = train(10000)
 print(getAveragedStrategy(comp))
 
+vvv = []
+for j in range(200):
+    vv = 0
+    for i in range(100):
+        myAction = getAction(playerstrategey)
+        otherAction = getAction(oppStrategy)
+        vv += value(myAction, otherAction)
+    vvv.append(vv)
+plt.plot(sorted(vvv))
+plt.show()
+print(np.mean(vvv))
+print(np.median(vvv))
 
 
-
-
+strategy = getAveragedStrategy(s1)
+for j in range(5):
+    a = [getAction(getStrategy(strategy)) for i in range(100)]
+    plt.plot(sorted(a))
+plt.show()
