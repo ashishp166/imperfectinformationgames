@@ -6,7 +6,6 @@ from LiarDieNode import Node
 
 class LiarDieTrainer:
     def __init__(self, sides):
-        print("sides", sides)
         #doubt and accept should be static final variables
         self.DOUBT = 0
         self.ACCEPT = 1
@@ -16,7 +15,6 @@ class LiarDieTrainer:
         for myClaim in range(self.sides + 1):
             for oppClaim in range(myClaim + 1, self.sides + 1):
                 self.responseNodes[myClaim][oppClaim] = Node(1 if oppClaim == 0 or oppClaim == self.sides else 2)
-                print(self.responseNodes[myClaim][oppClaim].pPlayer)
         self.claimNodes = np.empty((self.sides, self.sides + 1), dtype=Node)
         for oppClaim in range(self.sides):
             for roll in range(1, self.sides + 1):
@@ -41,7 +39,6 @@ class LiarDieTrainer:
                         actionProb = node.getStrategy()
                         if(oppClaim < self.sides):
                             nextNode = self.claimNodes[oppClaim][rollAfterAcceptingClaim[oppClaim]]
-                            print(nextNode.pPlayer + actionProb[1])
                             nextNode.pPlayer += actionProb[1] * node.pPlayer
                             nextNode.pOpponent += node.pOpponent
                 #visit claim nodes forward
@@ -106,7 +103,18 @@ class LiarDieTrainer:
         for intialRoll in range(1, self.sides + 1):
             print("Initial claim policy with roll ", intialRoll)
             for prob in self.claimNodes[0][intialRoll].getAverageStrategy():
-                print(prob)
+                print("{:.2f}".format(prob))
+
+        print("\nOld Claim\tNew Claim\tAction Probabilities")
+        for myClaim in range(self.sides + 1):
+            for oppClaim in range(myClaim + 1, self.sides + 1):
+                print("\t", myClaim, "\t", oppClaim, "\t",self.responseNodes[myClaim][oppClaim].getAverageStrategy(), "\n")
+
+        print("\nOld Claim\tNew Claim\tAction Probabilities")
+        for oppClaim in range(self.sides):
+            for roll in range(1, self.sides + 1):
+                print("\t", oppClaim, "\t", roll, "\t", self.claimNodes[oppClaim][roll].getAverageStrategy(),
+                      "\n")
 
 
 
