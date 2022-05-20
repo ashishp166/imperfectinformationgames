@@ -26,7 +26,27 @@ class LiarDieTrainer:
             #accumulate realization weights forward
             for oppClaim in range(len(self.sides + 1)):
                 #visit response nodes forward
+                if oppClaim > 0:
+                    for myClaim in range(oppClaim):
+                        node = self.responseNodes[myClaim][oppClaim]
+                        actionProb = node.getStrategy()
+                        if(oppClaim < self.sides):
+                            nextNode = self.claimNodes[oppClaim][rollAfterAcceptingClaim]
+                            nextNode.pPlayer += actionProb[1] * node.pPlayer
+                            nextNode.pOpponent += node.pOpponent
+                #visit claim nodes forward
+                if oppClaim < self.sides:
+                    node = self.claimNodes[oppClaim][rollAfterAcceptingClaim[oppClaim]]
+                    actionProb = node.getStrategy()
+                    for myClaim in range(oppClaim + 1, len(self.sdies + 1)):
+                        nextClaimProb = actionProb[myClaim - oppClaim - 1]
+                        if nextClaimProb > 0:
+                            nextNode = self.responseNodes[oppClaim][myClaim]
+                            nextNode.pPlayer += node.pOpponent
+                            nextNode.pOpponent += nextClaimProb * node.pPlayer
+
             #backpropagate utilites, adjusting regrets and strategies
+
             #reset strategy sums after half of training
     def LiarDieTrainer(self, sides):
         self.sides = sides
