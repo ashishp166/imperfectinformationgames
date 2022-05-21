@@ -32,7 +32,7 @@ class LiarDieTrainer:
             self.claimNodes[0][rollAfterAcceptingClaim[0]].pOpponent = 1
             #accumulate realization weights forward
             for oppClaim in range(self.sides + 1):
-                #visit response nodes forward
+                #visit response nodes forward(don't want to go to 0 val)
                 if oppClaim > 0:
                     for myClaim in range(oppClaim):
                         node = self.responseNodes[myClaim][oppClaim]
@@ -41,7 +41,7 @@ class LiarDieTrainer:
                             nextNode = self.claimNodes[oppClaim][rollAfterAcceptingClaim[oppClaim]]
                             nextNode.pPlayer += actionProb[1] * node.pPlayer
                             nextNode.pOpponent += node.pOpponent
-                #visit claim nodes forward
+                #visit claim nodes forward(all except the last one)
                 if oppClaim < self.sides:
                     node = self.claimNodes[oppClaim][rollAfterAcceptingClaim[oppClaim]]
                     actionProb = node.getStrategy()
