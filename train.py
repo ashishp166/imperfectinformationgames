@@ -1,10 +1,4 @@
 import random
-import tensorflow as tf
-import itertools
-import math
-from collections import Counter
-import argparse
-import os
 
 from nnetwork import *
 
@@ -16,15 +10,19 @@ d2 = 2
 sides = 6
 #one of normal, joker, stairs
 type = "normal"
-
+#weight decay
+weightDecay = 1e-2
+#
+path = "here"
 D_PUB, D_PRI, *_ = calc_args(d1, d2, sides, type)
 model = NetConcat(D_PRI, D_PUB)
-game = Game(d1, d2, sides, type)
+game = Game(model, d1, d2, sides, type)
 
 device = tf.device("cuda")
-model.to(device)
+model.compile(device)
 
-tf.stop_gradient()
+tf.no_gradient()
+
 
 def play(r1, r2, replay_buffer):
     privs = [game.make_priv(r1, 0).to(device), game.make_priv(r2, 1).to(device)]
@@ -57,3 +55,105 @@ def play(r1, r2, replay_buffer):
     with tf.stop_gradient():
         state = game.make_state().to(device)
         play_inner(state)
+
+
+def print_strategy(state):
+    total_v = 0
+    total_cnt = 0
+    for r1, cnt in sorted(Counter(game.rolls(0)).items()):
+        priv = game.make_priv(r1, 0).to(device)
+        v = model(priv, state)
+        rs = tf.tensor(game.make_regrets(priv, state, last_call=-1))
+        if rs.sum() != 0:
+            rs /= rs.sum()
+        strat = []
+        for action, prob in enumerate(rs):
+            n, d = divmod(action, game.SIDES)
+            n, d = n + 1, d + 1
+            if d == 1:
+                strat.append(f"{n}:")
+            strat.append(f"{prob:.2f}")
+        print(r1, f"{float(v):.4f}".rjust(7), f"({cnt})", " ".join(strat))
+        total_v += v
+        total_cnt += cnt
+    print(f"Mean value: {total_v / total_cnt}")
+
+
+class ReciLR(tf.optim.lr_scheduler._LRScheduler):
+    def __init__(self, optimizer, gamma=1, last_epoch=-1, verbose=False):
+        self.gamma = gamma
+        super(ReciLR, self).__init__(optimizer, last_epoch, verbose)
+
+    def get_lr(self):
+        return [
+            base_lr / (self.last_epoch + 1) ** self.gamma
+            for base_lr, group in zip(self.base_lrs, self.optimizer.param_groups)
+        ]
+
+    def _get_closed_form_lr(self):
+        return [
+            base_lr / (self.last_epoch + 1) ** self.gamma for base_lr in self.base_lrs
+        ]
+
+
+def train():
+    optimizer = tf.optim.AdamW(model.parameters(), weight_decay=weightDecay)
+    scheduler = ReciLR(optimizer, gamma=0.5)
+    value_loss = tf.nn.MSELoss()
+    all_rolls = list(itertools.product(game.rolls(0), game.rolls(1)))
+    for t in range(100_000):
+        replay_buffer = []
+
+        BS = 100  # Number of rolls to include
+        for r1, r2 in (
+            all_rolls if len(all_rolls) <= BS else random.sample(all_rolls, BS)
+        ):
+            play(r1, r2, replay_buffer)
+
+        random.shuffle(replay_buffer)
+        privs, states, y = zip(*replay_buffer)
+
+        privs = tf.concat(privs, axis=0).to(device)
+        states = tf.concat(states, axis=0).to(device)
+        y = tf.tensor(y, dtype=tf.float).reshape(-1, 1).to(device)
+
+        y_pred = model(privs, states)
+
+        # Compute and print loss
+        loss = value_loss(y_pred, y)
+        print(t, loss.item())
+
+        if t % 5 == 0:
+            with tf.stop_gradient():
+                print_strategy(game.make_state().to(device))
+
+        # Zero gradients, perform a backward pass, and update the weights.
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        scheduler.step()
+
+        if (t + 1) % 10 == 0:
+            print(f"Saving to ")
+            tf.save(
+                {
+                    "epoch": t,
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "args": path,
+                },
+                path,
+            )
+        if (t + 1) % 1000 == 0:
+            tf.save(
+                {
+                    "epoch": t,
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "args": path,
+                },
+                f"{path}.cp{t+1}",
+            )
+
+
+train()

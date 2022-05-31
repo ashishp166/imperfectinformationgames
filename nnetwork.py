@@ -1,10 +1,7 @@
 # this is the neural network
 
-import random
 import tensorflow as tf
 import itertools
-import numpy as np
-import math
 from collections import Counter
 
 
@@ -37,60 +34,63 @@ class Net(tf.keras.Model):
 
 class NetConcat(tf.keras.Model):
 
-  def __init__(self, d_pri, d_pub):
-    super().__init__()
+    def __init__(self, d_pri, d_pub):
+        super().__init__()
 
-    #output size of each layer: 500, 400, 300, 200, 100, 1(tanh)
-    self.seq = tf.keras.models.Sequential([
-      # First Dense layer input is d_priv + d_pub
-      tf.keras.layers.Dense(units=500, activation=tf.nn.relu),
-      tf.keras.layers.Dense(units=400, activation=tf.nn.relu),
-      tf.keras.layers.Dense(units=300, activation=tf.nn.relu),
-      tf.keras.layers.Dense(units=200, activation=tf.nn.relu),
-      tf.keras.layers.Dense(units=100, activation=tf.nn.relu),
-      tf.keras.layers.Dense(units=1, activation=tf.nn.tanh)
-    ])
+        # output size of each layer: 500, 400, 300, 200, 100, 1(tanh)
+        self.seq = tf.keras.models.Sequential([
+            # First Dense layer input is d_priv + d_pub
+            tf.keras.layers.Dense(units=500, activation=tf.nn.relu),
+            tf.keras.layers.Dense(units=400, activation=tf.nn.relu),
+            tf.keras.layers.Dense(units=300, activation=tf.nn.relu),
+            tf.keras.layers.Dense(units=200, activation=tf.nn.relu),
+            tf.keras.layers.Dense(units=100, activation=tf.nn.relu),
+            tf.keras.layers.Dense(units=1, activation=tf.nn.tanh)
+        ])
 
-  def forward(self, priv, pub):
-    if len(priv.shape) == 1:
-      joined = tf.concat((priv, pub), axis=0)
-    else:
-      joined = tf.concat((priv, pub), axis=1)
-    return self.seq(joined)
+    def forward(self, priv, pub):
+        if len(priv.shape) == 1:
+            joined = tf.concat((priv, pub), axis=0)
+        else:
+            joined = tf.concat((priv, pub), axis=1)
+        return self.seq(joined)
+
 
 class NetCompBilin(tf.keras.Model):
 
-  def __init__(self, d_pri, d_pub):
-    super().__init__()
+    def __init__(self, d_pri, d_pub):
+        super().__init__()
 
-    middle = 500
-    #input is size of d_private
-    self.layer_pri = tf.keras.layers.Dense(units=middle)
-    # input is size of d_pub
-    self.layer_pub = tf.keras.layers.Dense(units=middle)
+        middle = 500
+        # input is size of d_private
+        self.layer_pri = tf.keras.layers.Dense(units=middle)
+        # input is size of d_pub
+        self.layer_pub = tf.keras.layers.Dense(units=middle)
 
-    self.seq = tf.keras.models.Sequential([
-        # First Dense layer
-        tf.keras.layers.Dense(units=100, activation=tf.nn.relu),
-        tf.keras.layers.Dense(units=100, activation=tf.nn.relu),
-        tf.keras.layers.Dense(units=100, activation=tf.nn.relu),
-        tf.keras.layers.Dense(units=100, activation=tf.nn.relu),
-        tf.keras.layers.Dense(units=1, activation=tf.nn.tanh)
-    ])
+        self.seq = tf.keras.models.Sequential([
+            # First Dense layer
+            tf.keras.layers.Dense(units=100, activation=tf.nn.relu),
+            tf.keras.layers.Dense(units=100, activation=tf.nn.relu),
+            tf.keras.layers.Dense(units=100, activation=tf.nn.relu),
+            tf.keras.layers.Dense(units=100, activation=tf.nn.relu),
+            tf.keras.layers.Dense(units=1, activation=tf.nn.tanh)
+        ])
 
-  def forward(self, priv, pub):
-    joined = self.layer_pri(priv) * self.layer_pub(pub)
-    return self.seq(joined)
+    def forward(self, priv, pub):
+        joined = self.layer_pri(priv) * self.layer_pub(pub)
+        return self.seq(joined)
+
 
 class Resid(tf.keras.Model):
     def __init__(self, in_channels, out_channels, kernel_size):
         super().__init__()
-        #input size is in_channels
+        # input size is in_channels
         self.conv = tf.keras.layers.Conv1D(filters=out_channels, kernel_size=kernel_size)
 
-    #check over if the formatting of y is correct
+    # check over if the formatting of y is correct
     def forward(self, x, y=None):
         y = self.conv(y)
+
 
 class Net3(tf.keras.Model):
     def __init__(self, d_pri, d_pub):
@@ -98,14 +98,14 @@ class Net3(tf.keras.Model):
 
         def conv(channels, size):
             model = tf.keras.models.Sequential([
-                #input size = 1
+                # input size = 1
                 tf.keras.layers.Conv1D(channels, kernel_size=size),
-                #input size is channels
+                # input size is channels
                 tf.keras.layers.BatchNormalization(),
                 tf.keras.relu(),
                 # input size = channels
                 tf.keras.layers.Conv1D(channels, kernel_size=size),
-                #input size is channels
+                # input size is channels
                 tf.keras.layers.BatchNormalization()
             ])
             return model
@@ -135,7 +135,7 @@ class Net2(tf.keras.Model):
             # input size = 1
             tf.keras.layers.Conv1D(channels, kernel_size=2),
             tf.keras.relu(),
-            #input size = channels
+            # input size = channels
             tf.keras.layers.Conv1D(1, kernel_size=2),
             tf.keras.relu()
         ])
@@ -173,26 +173,20 @@ class Net2(tf.keras.Model):
 
 
 def calc_args(d1, d2, sides, variant):
-
     D_PUB = (d1 + d2) * sides
     if variant == "stairs":
         D_PUB = 2 * (d1 + d2) * sides
 
-
     LIE_ACTION = D_PUB
     D_PUB += 1
 
-
     N_ACTIONS = D_PUB
-
 
     CUR_INDEX = D_PUB
     D_PUB += 1
 
-
     D_PUB_PER_PLAYER = D_PUB
     D_PUB *= 2
-
 
     D_PRI = max(d1, d2) * sides
 
@@ -225,9 +219,7 @@ class Game:
         if priv[self.PRI_INDEX] != state[self.CUR_INDEX]:
             print("Warning: Regrets are not with respect to current player")
 
-
         n_actions = self.N_ACTIONS - last_call - 1
-
 
         batch = state.repeat(n_actions + 1, 1)
 
@@ -291,18 +283,21 @@ class Game:
 
     def make_priv(self, roll, player):
         assert player in [0, 1]
-        priv = tf.zeros(self.D_PRI)
-        priv[self.PRI_INDEX + player] = 1
+        if (self.D_PRI % 12 != 0):
+            priv = tf.Variable(tf.zeros([24]))
+        else:
+            priv = tf.Variable(tf.zeros([self.D_PRI]))
+        priv = priv[self.PRI_INDEX + player].assign(1)
         cnt = Counter(roll)
         for face, c in cnt.items():
             for i in range(c):
-                priv[(face - 1) * max(self.D1, self.D2) + i] = 1
-
+                priv = priv[(face - 1) * max(self.D1, self.D2) + i].assign(1)
         return priv
 
     def make_state(self):
-        state = tf.zeros(self.D_PUB)
-        state[self.CUR_INDEX] = 1
+
+        state = tf.Variable(tf.zeros([self.D_PUB]))
+        state = state[self.CUR_INDEX].assign(1)
         return state
 
     def get_cur(self, state):
@@ -319,8 +314,8 @@ class Game:
 
     def get_calls(self, state):
         merged = (
-            state[: self.CUR_INDEX]
-            + state[self.D_PUB_PER_PLAYER : self.D_PUB_PER_PLAYER + self.CUR_INDEX]
+                state[: self.CUR_INDEX]
+                + state[self.D_PUB_PER_PLAYER: self.D_PUB_PER_PLAYER + self.CUR_INDEX]
         )
         return (merged == 1).nonzero(as_tuple=True)[0].tolist()
 
