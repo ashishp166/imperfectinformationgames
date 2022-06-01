@@ -1,7 +1,8 @@
 import random
-
+import tensorflow as tf
 from nnetwork import *
 
+import numpy as np
 #Number of dice for player 1
 d1 = 2
 #Number of dice for player 2
@@ -19,13 +20,12 @@ model = NetConcat(D_PRI, D_PUB)
 game = Game(model, d1, d2, sides, type)
 
 device = tf.device("cuda")
-model.compile(device)
+#model.compile(device)
 
-tf.no_gradient()
-
+#tf.no_gradient()
 
 def play(r1, r2, replay_buffer):
-    privs = [game.make_priv(r1, 0).to(device), game.make_priv(r2, 1).to(device)]
+    privs = [game.make_priv(r1, 0), game.make_priv(r2, 1)]
 
     def play_inner(state):
         cur = game.get_cur(state)
@@ -41,6 +41,7 @@ def play(r1, r2, replay_buffer):
             last_call = calls[-1] if calls else -1
             #currently set eps to 0 in policy
             eps = 0
+            print(state)
             action = game.sample_action(privs[cur], state, last_call, eps)
             new_state = game.apply_action(state, action)
             # min/max
@@ -52,9 +53,11 @@ def play(r1, r2, replay_buffer):
 
         return res
 
-    with tf.stop_gradient():
-        state = game.make_state().to(device)
-        play_inner(state)
+    #with tf.stop_gradient():
+    print(game.make_state())
+    #state = game.make_state().to(device)
+    state = game.make_state()
+    return play_inner(state)
 
 
 def print_strategy(state):
@@ -79,10 +82,10 @@ def print_strategy(state):
     print(f"Mean value: {total_v / total_cnt}")
 
 
-class ReciLR(tf.optim.lr_scheduler._LRScheduler):
+class ReciLR(tf.keras.callbacks.LearningRateScheduler):
     def __init__(self, optimizer, gamma=1, last_epoch=-1, verbose=False):
         self.gamma = gamma
-        super(ReciLR, self).__init__(optimizer, last_epoch, verbose)
+        super(ReciLR, self).__init__(optimizer)
 
     def get_lr(self):
         return [
@@ -97,9 +100,9 @@ class ReciLR(tf.optim.lr_scheduler._LRScheduler):
 
 
 def train():
-    optimizer = tf.optim.AdamW(model.parameters(), weight_decay=weightDecay)
+    optimizer = tf.keras.optimizers.Adam()
     scheduler = ReciLR(optimizer, gamma=0.5)
-    value_loss = tf.nn.MSELoss()
+    value_loss = tf.keras.losses.MeanSquaredError()
     all_rolls = list(itertools.product(game.rolls(0), game.rolls(1)))
     for t in range(100_000):
         replay_buffer = []
@@ -108,8 +111,8 @@ def train():
         for r1, r2 in (
             all_rolls if len(all_rolls) <= BS else random.sample(all_rolls, BS)
         ):
-            play(r1, r2, replay_buffer)
-
+            replay_buffer = play(r1, r2, replay_buffer)
+        print(replay_buffer)
         random.shuffle(replay_buffer)
         privs, states, y = zip(*replay_buffer)
 
