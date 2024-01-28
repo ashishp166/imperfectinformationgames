@@ -1,11 +1,8 @@
-Notes on Reinforcement Learning
+Just playing around with using reinforcement learning to reduce the search space for imperfect information games
 
-Why do we want to add reinforcemencent learning to the model
-    -takes too long
-    -uses too much space
+About: 
+- Algorithm for solving imperfect information games with reinforcement learning of public belief states
+- Utilized Monte Carlo Counterfactual Regret Minimization to find Nash equilibrium for 2 player zero sum games
 
-Use monte carlo cfr and only play to certain depth and gives result of that path
-
-- make a nn to run the subgames
-- use gradient formula to get learning algorithm
-- run proper probability functions to test the ability of algo
+TODO:
+- run probability functions to test the ability of algo
